@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<!--
+  Crypto Monitor · página propia (V231)
+  Esta página NO tiene ningún dato tuyo: ni la dirección de tu Google, ni claves, ni montos.
+  Todo lo privado viaja después del "#" de la dirección, que los navegadores nunca le mandan a GitHub,
+  y queda guardado solo en tu teléfono. La página únicamente muestra CM (que corre en tu Google) a pantalla completa,
+  sin el cartel de Google y como una app.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CM">
+<meta name="theme-color" content="#060b15">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-mRYbarwCF4aOLBXuMbU4BIGdcoUpd2HFnvSGomgTvho='; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icono-180.png">
+<title>CM</title>
+<style>
+html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-text-size-adjust:100%}
+#cm{position:fixed;inset:0;width:100%;height:100%;border:0;display:block;background:#060b15}
+#msg{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;line-height:1.45}
+#msg b{font-size:22px;color:#e8f1ff}#msg span{color:#8ea3c0;font-size:15px;max-width:360px}
+</style>
+</head>
+<body>
+<iframe id="cm" title="Crypto Monitor" referrerpolicy="no-referrer" allow="clipboard-write"></iframe>
+<div id="msg"><b>Crypto Monitor</b><span>Abrí esta página escaneando el código de vinculación de CM en tu PC (Portfolio → Configuración → Nube).</span></div>
+<script>
+(function () {
+  var KEY = 'cm_dispositivo_v1';                     // queda solo en este teléfono (no viaja a ningún lado)
+  var ID = /^[A-Za-z0-9_-]{20,120}$/, DEV = /^[A-Za-z0-9_-]{8,20}\.[A-Za-z0-9_-]{43}$/, PAIR = /^[A-Za-z0-9_-]{43}$/;
+  function parse(h) { var o = {}; String(h || '').replace(/^#/, '').split('&').forEach(function (p) { var i = p.indexOf('='); if (i > 0) o[p.slice(0, i)] = p.slice(i + 1); }); return o; }
+  function get() { try { return parse(localStorage.getItem(KEY) || ''); } catch (_) { return {}; } }
+  function put(u, d) { var h = '#u=' + u + '&d=' + d; try { localStorage.setItem(KEY, h); } catch (_) {} history.replaceState(null, '', location.pathname + h); }
+  var p = parse(location.hash), saved = get();
+  var u = ID.test(p.u || '') ? p.u : (ID.test(saved.u || '') ? saved.u : '');
+  if (!u) { document.getElementById('msg').style.display = 'flex'; document.getElementById('cm').remove(); return; }
+  var inner = '';
+  if (PAIR.test(p.cm || '')) { inner = 'cm=' + p.cm; history.replaceState(null, '', location.pathname + '#u=' + u); }   // vincular: la clave no queda en la dirección
+  else if (DEV.test(p.d || '')) { inner = 'd=' + p.d; put(u, p.d); }
+  else if (DEV.test(saved.d || '') && saved.u === u) { inner = 'd=' + saved.d; put(u, saved.d); }
+  inner += (inner ? '&' : '') + 'o=' + encodeURIComponent(location.origin);
+  var f = document.getElementById('cm');
+  f.src = 'https://script.google.com/macros/s/' + u + '/exec#' + inner;
+  // CM (dentro de tu Google) avisa la dirección de este teléfono al terminar de vincular.
+  window.addEventListener('message', function (e) {
+    if (!/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)) return;
+    var m = e.data || {};
+    if (m.cm === 'dispositivo' && /^d=/.test(m.hash || '')) { var d = String(m.hash).slice(2).split('&')[0]; if (DEV.test(d)) put(u, d); }
+  });
+})();
+</script>
+</body>
+</html>
