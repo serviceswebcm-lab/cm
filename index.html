@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!--
-  Crypto Monitor · página propia (V251)
+  Crypto Monitor · página propia (V264)
   Esta página NO tiene ningún dato tuyo: ni la dirección de tu Google, ni claves, ni montos.
   Todo lo privado viaja después del "#" de la dirección, que los navegadores nunca le mandan a GitHub,
   y queda guardado solo en tu teléfono. La página únicamente muestra CM (que corre en tu Google) a pantalla completa,
@@ -22,7 +22,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CM">
 <meta name="theme-color" content="#060b15">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-7YQbBthK2HQOwE9HLqiam99H3MhJ7jjba4HdLPiKdDM='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-tlN5uQSYGJqUgGY3uceY3TB9uM0Tev/c34Qu14UPjY8='; base-uri 'none'; form-action 'none'">
 <link rel="apple-touch-icon" href="icono-180.png">
 <title>CM</title>
 <style>
@@ -79,6 +79,14 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
     var m = e.data || {};
     if (m.cm === 'dispositivo' && /^d=/.test(m.hash || '')) { var d = String(m.hash).slice(2).split('&')[0]; if (DEV.test(d)) put(window.CMU, d); }
   });
+  // V260: en la app de inicio del iPhone (pantalla completa) el alto "100 %" deja una franja vacía abajo (iOS no cuenta la barra
+  // de estado). CM ocupa todo el alto real de la pantalla.
+  function fit() {
+    var f = document.getElementById('cm'), h = window.innerHeight;
+    if (navigator.standalone) { var pt = window.matchMedia && window.matchMedia('(orientation: portrait)').matches, sh = pt ? screen.height : screen.width; if (sh > h) h = sh; }
+    f.style.height = h + 'px'; document.documentElement.style.height = h + 'px'; document.body.style.height = h + 'px';
+  }
+  fit(); window.addEventListener('resize', fit); window.addEventListener('orientationchange', function () { setTimeout(fit, 300); });
   document.getElementById('go').addEventListener('click', function () {
     var p = parse(document.getElementById('lnk').value.trim());
     if (!ID.test(p.u || '') || !(CODE.test(p.p || '') || PAIR.test(p.cm || ''))) { document.getElementById('err').textContent = 'Ese no es un enlace de vinculación de CM.'; return; }
@@ -167,6 +175,19 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
     else if (m.cm === 'faceid-desactivar' || m.cm === 'faceid-invalido') { fset(null); hide(); estado(); }
     else if (m.cm === 'faceid-cancelar') { if (fmode === 'desbloquear') hide(); }
   });
+  // V264: CM corre dentro del marco de Google, donde el iPhone informa 0 en los márgenes de pantalla (isla, esquinas curvas
+  // y barra de inicio). Esta página sí los conoce: se los pasa a CM cuando los pide y cada vez que cambian.
+  var SA = document.createElement('div'), psrc = null, porg = '';
+  SA.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
+  document.body.appendChild(SA);
+  function psend() { if (!psrc) return; var c = getComputedStyle(SA); try { psrc.postMessage({ cm: 'pantalla', t: parseFloat(c.paddingTop) || 0, r: parseFloat(c.paddingRight) || 0, b: parseFloat(c.paddingBottom) || 0, l: parseFloat(c.paddingLeft) || 0, app: !!navigator.standalone }, porg); } catch (_) {} }
+  window.addEventListener('message', function (e) {
+    if (!/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin) || !ours(e.source)) return;
+    if ((e.data || {}).cm !== 'pantalla?') return;
+    psrc = e.source; porg = e.origin; psend();
+  });
+  window.addEventListener('resize', function () { setTimeout(psend, 60); });
+  window.addEventListener('orientationchange', function () { setTimeout(psend, 400); });
   start(parse(location.hash));
 })();
 </script>
