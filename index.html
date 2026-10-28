@@ -3,13 +3,16 @@
 <head>
 <meta charset="utf-8">
 <!--
-  Crypto Monitor · página propia (V236)
+  Crypto Monitor · página propia (V251)
   Esta página NO tiene ningún dato tuyo: ni la dirección de tu Google, ni claves, ni montos.
   Todo lo privado viaja después del "#" de la dirección, que los navegadores nunca le mandan a GitHub,
   y queda guardado solo en tu teléfono. La página únicamente muestra CM (que corre en tu Google) a pantalla completa,
   sin el cartel de Google y como una app.
   Sin archivo de manifiesto a propósito: así el ícono de inicio del iPhone guarda la dirección completa (con el "#")
   y cada vez que lo abrís recuerda tu teléfono.
+  V251 · Face ID: lo maneja ESTA página (CM, dentro del marco de Google, no puede usar Face ID). Con Face ID se cifra tu PIN
+  en este iPhone con una clave que solo existe dentro del llavero del iPhone (passkey) y se abre únicamente mirando el
+  teléfono. Nada de eso viaja a GitHub ni a Google.
 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
@@ -19,7 +22,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CM">
 <meta name="theme-color" content="#060b15">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-3S6wgwZkMLr65ftuPAAn1uOuxVVBwXisG2aGTv2bwHs='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-5kCOmfSRYZ2fJXOxMxmM67ddvWBRFbub32cC1J9Y2Kc='; base-uri 'none'; form-action 'none'">
 <link rel="apple-touch-icon" href="icono-180.png">
 <title>CM</title>
 <style>
@@ -30,11 +33,24 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
 #msg input{width:100%;max-width:380px;box-sizing:border-box;padding:13px 14px;border-radius:12px;border:1px solid #23405e;background:#0e1c2e;color:#e8f1ff;font:15px inherit;font-family:inherit}
 #msg button{padding:12px 22px;border-radius:12px;border:0;background:#3fd0ff;color:#04121f;font:700 15px inherit;font-family:inherit}
 #msg em{color:#ff8f9f;font-style:normal;font-size:14px;min-height:18px}
+#fid{position:fixed;inset:0;z-index:10;display:none;align-items:flex-end;justify-content:center;background:rgba(2,7,15,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#fid.on{display:flex}
+#fid .c{width:100%;max-width:520px;box-sizing:border-box;padding:12px 22px calc(env(safe-area-inset-bottom) + 18px);border-radius:26px 26px 0 0;background:#0b1424;border:1px solid #1f3550;border-bottom:0;text-align:center}
+#fid .c:before{content:"";display:block;width:40px;height:5px;margin:0 auto 18px;border-radius:3px;background:#3a4c66}
+#fid svg{width:64px;height:64px;fill:none;stroke:#3fd0ff;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#fid b{display:block;margin:10px 0 4px;font-size:20px;color:#e8f1ff}
+#fid span{display:block;color:#8ea3c0;font-size:14.5px;line-height:1.45;min-height:20px}
+#fid span.err{color:#ff8f9f}
+#fid button{display:block;width:100%;height:52px;margin-top:12px;border-radius:15px;border:0;font:700 16px -apple-system,system-ui,sans-serif}
+#fid .p{background:#3fd0ff;color:#04121f;margin-top:18px}
+#fid .s{background:transparent;color:#8ea3c0}
+
 </style>
 </head>
 <body>
 <iframe id="cm" title="Crypto Monitor" referrerpolicy="no-referrer" allow="clipboard-write"></iframe>
 <div id="msg"><b>Crypto Monitor</b><span>Escaneá el código de vinculación de CM en tu PC (Portfolio → Configuración → Nube) o pegá acá el enlace. Cada código sirve una sola vez.</span><input id="lnk" type="url" placeholder="Pegá el enlace de vinculación" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="go" type="button">Vincular</button><em id="err"></em></div>
+<div id="fid" role="dialog" aria-modal="true" aria-label="Face ID"><div class="c"><svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9v1.5M15 9v1.5M12 9v4h-1M9.5 15.5c1.4 1 3.6 1 5 0"/></svg><b id="fidT"></b><span id="fidM"></span><button type="button" class="p" id="fidGo"></button><button type="button" class="s" id="fidNo"></button></div></div>
 <script>
 (function () {
   var KEY = 'cm_dispositivo_v1';                     // queda solo en este teléfono (no viaja a ningún lado)
@@ -67,6 +83,89 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
     var p = parse(document.getElementById('lnk').value.trim());
     if (!ID.test(p.u || '') || !(CODE.test(p.p || '') || PAIR.test(p.cm || ''))) { document.getElementById('err').textContent = 'Ese no es un enlace de vinculación de CM.'; return; }
     start(p);
+  });
+
+  // ================= V250 · FACE ID =================
+  // CM (en el marco de Google) le pide a esta página: estado, desbloquear (devuelve el PIN), activar (recibe el PIN) o desactivar.
+  // El PIN se guarda cifrado (AES-GCM) con una clave que da la passkey del iPhone (extensión PRF de WebAuthn) y que solo
+  // aparece después de Face ID. Si el iPhone no ofrece PRF, la clave queda en este teléfono y se usa recién después de un
+  // Face ID correcto. Cada toque de Face ID se hace en esta página (el iPhone exige que el toque sea acá).
+  var FKEY = 'cm_faceid_v1', fsrc = null, forg = '', fmode = '', fpin = '', fcred = null;
+  var te = new TextEncoder(), td = new TextDecoder();
+  function b64(u) { var s = ''; u = new Uint8Array(u); for (var i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function ub64(s) { s = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function rnd(n) { return crypto.getRandomValues(new Uint8Array(n)); }
+  function fget() { try { return JSON.parse(localStorage.getItem(FKEY) || 'null'); } catch (_) { return null; } }
+  function fset(v) { try { if (v) localStorage.setItem(FKEY, JSON.stringify(v)); else localStorage.removeItem(FKEY); } catch (_) {} }
+  function ours(w) { var f = document.getElementById('cm').contentWindow; for (var i = 0; i < 5 && w; i++) { if (w === f) return true; try { if (w === w.parent) break; w = w.parent; } catch (_) { break; } } return false; }
+  function tell(m) { if (fsrc) try { fsrc.postMessage(m, forg); } catch (_) {} }
+  function avail() { try { return window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable ? PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable() : Promise.resolve(false); } catch (_) { return Promise.resolve(false); } }
+  function estado() { avail().then(function (a) { tell({ cm: 'faceid-estado', disponible: !!a, activo: !!fget() }); }); }
+  var fid = document.getElementById('fid'), fT = document.getElementById('fidT'), fM = document.getElementById('fidM'), fGo = document.getElementById('fidGo'), fNo = document.getElementById('fidNo');
+  function sheet(t, m, go, no, err) { fT.textContent = t; fM.textContent = m || ''; fM.className = err ? 'err' : ''; fGo.textContent = go; fNo.textContent = no; fGo.disabled = false; fid.className = 'on'; }
+  function hide() { fid.className = ''; fmode = ''; fpin = ''; fcred = null; }
+  function aes(raw, use) { return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, [use]); }
+  var AAD = te.encode('cm-faceid-v1');
+  function seal(keyRaw, pin) { var iv = rnd(12); return aes(keyRaw, 'encrypt').then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: AAD }, k, te.encode(pin)); }).then(function (ct) { return { iv: b64(iv), ct: b64(ct) }; }); }
+  function open_(keyRaw, rec) { return aes(keyRaw, 'decrypt').then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: ub64(rec.iv), additionalData: AAD }, k, ub64(rec.ct)); }).then(function (p) { return td.decode(p); }); }
+  function prfOut(cred) { try { var x = cred.getClientExtensionResults(); return x && x.prf && x.prf.results && x.prf.results.first ? new Uint8Array(x.prf.results.first).slice(0, 32) : null; } catch (_) { return null; } }
+  function assert(rec, withPrf) {
+    var pk = { challenge: rnd(32), allowCredentials: [{ type: 'public-key', id: ub64(rec.id) }], userVerification: 'required', timeout: 60000 };
+    if (withPrf) pk.extensions = { prf: { eval: { first: ub64(rec.salt) } } };
+    return navigator.credentials.get({ publicKey: pk });
+  }
+  function nice(e) { var n = e && e.name; if (n === 'NotAllowedError' || n === 'AbortError') return 'Se canceló o no se reconoció tu cara.'; if (n === 'InvalidStateError') return 'Ya hay un Face ID de CM en este iPhone.'; return (e && e.message) || 'No se pudo usar Face ID.'; }
+  function enroll() {
+    var salt = rnd(32);
+    fGo.disabled = true;
+    navigator.credentials.create({ publicKey: {
+      rp: { name: 'CM · Crypto Monitor' }, user: { id: rnd(16), name: 'CM', displayName: 'CM · Crypto Monitor' }, challenge: rnd(32),
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+      timeout: 60000, extensions: { prf: { eval: { first: salt } } } } }).then(function (cred) {
+      var x = {}; try { x = cred.getClientExtensionResults() || {}; } catch (_) {}
+      fcred = { id: b64(cred.rawId), salt: b64(salt), prf: !!(x.prf && x.prf.enabled) };
+      var out = prfOut(cred);
+      if (out) return finishEnroll(out);
+      if (fcred.prf) { fmode = 'confirmar'; sheet('Confirmá con Face ID', 'Un último paso para guardar tu PIN de forma segura.', 'Confirmar con Face ID', 'Cancelar'); return; }
+      return finishEnroll(null);   // sin PRF: clave guardada en este iPhone, usada solo tras Face ID
+    }).catch(function (e) { fGo.disabled = false; fM.textContent = nice(e); fM.className = 'err'; });
+  }
+  function finishEnroll(prf) {
+    var key = prf || rnd(32);
+    return seal(key, fpin).then(function (box) {
+      var rec = { id: fcred.id, salt: fcred.salt, iv: box.iv, ct: box.ct, modo: prf ? 'prf' : 'llave' };
+      if (!prf) rec.k = b64(key);
+      fset(rec); tell({ cm: 'faceid-activado', ok: true, modo: rec.modo }); estado(); hide();
+    });
+  }
+  function confirmPrf() {
+    fGo.disabled = true;
+    assert({ id: fcred.id, salt: fcred.salt }, true).then(function (a) {
+      var out = prfOut(a); return finishEnroll(out);
+    }).catch(function (e) { fGo.disabled = false; fM.textContent = nice(e); fM.className = 'err'; });
+  }
+  function unlock() {
+    var rec = fget(); if (!rec) { hide(); return; }
+    fGo.disabled = true;
+    assert(rec, rec.modo === 'prf').then(function (a) {
+      var key = rec.modo === 'prf' ? prfOut(a) : ub64(rec.k);
+      if (!key) throw new Error('Face ID no devolvió la clave. Desactivalo y activalo de nuevo desde CM.');
+      return open_(key, rec);
+    }).then(function (pin) { hide(); tell({ cm: 'faceid-pin', pin: pin }); })
+      .catch(function (e) { fGo.disabled = false; fM.textContent = nice(e); fM.className = 'err'; });
+  }
+  fGo.addEventListener('click', function () { if (fmode === 'activar') enroll(); else if (fmode === 'confirmar') confirmPrf(); else if (fmode === 'desbloquear') unlock(); });
+  fNo.addEventListener('click', function () { if (fmode === 'activar' || fmode === 'confirmar') tell({ cm: 'faceid-activado', ok: false }); hide(); });
+  window.addEventListener('message', function (e) {
+    if (!/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin) || !ours(e.source)) return;
+    var m = e.data || {}; if (typeof m.cm !== 'string' || m.cm.indexOf('faceid') !== 0) return;
+    fsrc = e.source; forg = e.origin;
+    if (m.cm === 'faceid-estado?') estado();
+    else if (m.cm === 'faceid-pedir') { if (fget()) { fmode = 'desbloquear'; sheet('Desbloquear CM', 'Mirá tu iPhone para entrar.', 'Usar Face ID', 'Usar el PIN'); } }
+    else if (m.cm === 'faceid-activar' && /^[0-9]{4}$/.test(m.pin || '')) { fpin = m.pin; fmode = 'activar'; sheet('Activar Face ID', 'Vas a poder entrar a CM mirando el teléfono. El PIN sigue funcionando siempre.', 'Activar Face ID', 'Ahora no'); }
+    else if (m.cm === 'faceid-desactivar' || m.cm === 'faceid-invalido') { fset(null); hide(); estado(); }
+    else if (m.cm === 'faceid-cancelar') { if (fmode === 'desbloquear') hide(); }
   });
   start(parse(location.hash));
 })();
