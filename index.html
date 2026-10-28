@@ -3,13 +3,17 @@
 <head>
 <meta charset="utf-8">
 <!--
-  Crypto Monitor · página propia (V264)
+  Crypto Monitor · página propia (V267)
   Esta página NO tiene ningún dato tuyo: ni la dirección de tu Google, ni claves, ni montos.
   Todo lo privado viaja después del "#" de la dirección, que los navegadores nunca le mandan a GitHub,
   y queda guardado solo en tu teléfono. La página únicamente muestra CM (que corre en tu Google) a pantalla completa,
   sin el cartel de Google y como una app.
   Sin archivo de manifiesto a propósito: así el ícono de inicio del iPhone guarda la dirección completa (con el "#")
   y cada vez que lo abrís recuerda tu teléfono.
+  V267 · Llave de la PC: este iPhone puede aprobar lo delicado que pide CM en tu PC. Al vincularlo se crea una passkey
+  propia y un secreto de 32 bytes que queda cifrado acá con la clave que da Face ID (PRF). Cada aprobación se firma
+  (HMAC-SHA256) con ese secreto recién después de Face ID; la PC verifica la firma. El secreto nunca sale del iPhone
+  después de la vinculación (en la vinculación viaja una sola vez a tu PC, cifrado con la clave de tu nube).
   V251 · Face ID: lo maneja ESTA página (CM, dentro del marco de Google, no puede usar Face ID). Con Face ID se cifra tu PIN
   en este iPhone con una clave que solo existe dentro del llavero del iPhone (passkey) y se abre únicamente mirando el
   teléfono. Nada de eso viaja a GitHub ni a Google.
@@ -22,7 +26,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CM">
 <meta name="theme-color" content="#060b15">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-tlN5uQSYGJqUgGY3uceY3TB9uM0Tev/c34Qu14UPjY8='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-qyWc7zKkSkaV52115DX079qmEYZaQet+S6Ix6p/gpUw='; base-uri 'none'; form-action 'none'">
 <link rel="apple-touch-icon" href="icono-180.png">
 <title>CM</title>
 <style>
@@ -50,7 +54,7 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
 <body>
 <iframe id="cm" title="Crypto Monitor" referrerpolicy="no-referrer" allow="clipboard-write"></iframe>
 <div id="msg"><b>Crypto Monitor</b><span>Escaneá el código de vinculación de CM en tu PC (Portfolio → Configuración → Nube) o pegá acá el enlace. Cada código sirve una sola vez.</span><input id="lnk" type="url" placeholder="Pegá el enlace de vinculación" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="go" type="button">Vincular</button><em id="err"></em></div>
-<div id="fid" role="dialog" aria-modal="true" aria-label="Face ID"><div class="c"><svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9v1.5M15 9v1.5M12 9v4h-1M9.5 15.5c1.4 1 3.6 1 5 0"/></svg><b id="fidT"></b><span id="fidM"></span><button type="button" class="p" id="fidGo"></button><button type="button" class="s" id="fidNo"></button></div></div>
+<div id="fid" role="dialog" aria-modal="true" aria-label="Face ID"><div class="c"><svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9v1.5M15 9v1.5M12 9v4h-1M9.5 15.5c1.4 1 3.6 1 5 0"/></svg><b id="fidT"></b><span id="fidM"></span><button type="button" class="p" id="fidGo"></button><button type="button" class="s" id="fidNo"></button><button type="button" class="s" id="fidX" hidden>Ahora no</button></div></div>
 <script>
 (function () {
   var KEY = 'cm_dispositivo_v1';                     // queda solo en este teléfono (no viaja a ningún lado)
@@ -111,7 +115,7 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
   function estado() { avail().then(function (a) { tell({ cm: 'faceid-estado', disponible: !!a, activo: !!fget() }); }); }
   var fid = document.getElementById('fid'), fT = document.getElementById('fidT'), fM = document.getElementById('fidM'), fGo = document.getElementById('fidGo'), fNo = document.getElementById('fidNo');
   function sheet(t, m, go, no, err) { fT.textContent = t; fM.textContent = m || ''; fM.className = err ? 'err' : ''; fGo.textContent = go; fNo.textContent = no; fGo.disabled = false; fid.className = 'on'; }
-  function hide() { fid.className = ''; fmode = ''; fpin = ''; fcred = null; }
+  function hide() { fid.className = ''; fmode = ''; fpin = ''; fcred = null; fNo.disabled = false; var x = document.getElementById('fidX'); if (x) x.hidden = true; }
   function aes(raw, use) { return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, [use]); }
   var AAD = te.encode('cm-faceid-v1');
   function seal(keyRaw, pin) { var iv = rnd(12); return aes(keyRaw, 'encrypt').then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: AAD }, k, te.encode(pin)); }).then(function (ct) { return { iv: b64(iv), ct: b64(ct) }; }); }
@@ -163,12 +167,76 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
     }).then(function (pin) { hide(); tell({ cm: 'faceid-pin', pin: pin }); })
       .catch(function (e) { fGo.disabled = false; fM.textContent = nice(e); fM.className = 'err'; });
   }
-  fGo.addEventListener('click', function () { if (fmode === 'activar') enroll(); else if (fmode === 'confirmar') confirmPrf(); else if (fmode === 'desbloquear') unlock(); });
-  fNo.addEventListener('click', function () { if (fmode === 'activar' || fmode === 'confirmar') tell({ cm: 'faceid-activado', ok: false }); hide(); });
+  // ================= V267 · LLAVE DE LA PC =================
+  var LKEY = 'cm_llave_pc_v1', lreq = null, fX = document.getElementById('fidX');
+  var ACC = { admin: 'Desbloquear Admin', pin: 'Cambiar el PIN', cuentas: 'Conectar una cuenta (IOL, Mercado Pago, BingX)', operar: 'Habilitar operaciones en IOL',
+    nube: 'Vincular o quitar dispositivos de la nube', restaurar: 'Restaurar o restablecer datos', llave: 'Cambiar la configuración de la llave', vincular: 'Vincular un iPhone como llave' };
+  var LAAD = te.encode('cm-llave-pc-v1');
+  function lget() { try { return JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (_) { return null; } }
+  function lset(v) { try { if (v) localStorage.setItem(LKEY, JSON.stringify(v)); else localStorage.removeItem(LKEY); } catch (_) {} }
+  function lestado() { avail().then(function (a) { tell({ cm: 'llave-estado', disponible: !!a, activo: !!lget() }); }); }
+  function lfail(e) { fGo.disabled = false; fNo.disabled = false; fM.textContent = nice(e); fM.className = 'err'; }
+  function laltaFinish(prf) {
+    var key = prf || rnd(32), sec = rnd(32), iv = rnd(12);
+    return aes(key, 'encrypt').then(function (k) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv, additionalData: LAAD }, k, sec); }).then(function (ct) {
+      var rec = { id: fcred.id, salt: fcred.salt, iv: b64(iv), ct: b64(ct), modo: prf ? 'prf' : 'llave', at: Date.now() };
+      if (!prf) rec.k = b64(key);
+      lset(rec); tell({ cm: 'llave-alta-ok', ok: true, id: lreq.id, codigo: lreq.codigo, s: b64(sec), modo: rec.modo }); hide(); lreq = null; lestado();
+    });
+  }
+  function lalta() {
+    var salt = rnd(32); fGo.disabled = true;
+    navigator.credentials.create({ publicKey: {
+      rp: { name: 'CM · Crypto Monitor' }, user: { id: rnd(16), name: 'CM llave', displayName: 'CM · Llave de la PC' }, challenge: rnd(32),
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+      timeout: 60000, extensions: { prf: { eval: { first: salt } } } } }).then(function (cred) {
+      var x = {}; try { x = cred.getClientExtensionResults() || {}; } catch (_) {}
+      fcred = { id: b64(cred.rawId), salt: b64(salt), prf: !!(x.prf && x.prf.enabled) };
+      var out = prfOut(cred);
+      if (out) return laltaFinish(out);
+      if (fcred.prf) { fmode = 'llave-confirmar'; sheet('Confirmá con Face ID', 'Un último paso para guardar la llave de forma segura.', 'Confirmar con Face ID', 'Cancelar'); return; }
+      return laltaFinish(null);
+    }).catch(lfail);
+  }
+  function laltaConfirm() { fGo.disabled = true; assert({ id: fcred.id, salt: fcred.salt }, true).then(function (a) { return laltaFinish(prfOut(a)); }).catch(lfail); }
+  function lfirmar(ok) {
+    var rec = lget(), q = lreq; if (!rec || !q) { hide(); return; }
+    fGo.disabled = true; fNo.disabled = true;
+    assert(rec, rec.modo === 'prf').then(function (a) {
+      var key = rec.modo === 'prf' ? prfOut(a) : ub64(rec.k);
+      if (!key) throw new Error('Face ID no devolvió la clave. Vinculá este iPhone de nuevo desde la PC.');
+      return aes(key, 'decrypt').then(function (k) { return crypto.subtle.decrypt({ name: 'AES-GCM', iv: ub64(rec.iv), additionalData: LAAD }, k, ub64(rec.ct)); });
+    }).then(function (sec) {
+      return crypto.subtle.importKey('raw', sec, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    }).then(function (hk) {
+      return crypto.subtle.sign('HMAC', hk, te.encode('cm-llave-v1|' + q.id + '|' + q.nonce + '|' + q.accion + '|' + (ok ? 'si' : 'no')));
+    }).then(function (mac) { tell({ cm: 'llave-firma', id: q.id, ok: !!ok, mac: b64(mac) }); fNo.disabled = false; hide(); lreq = null; })
+      .catch(lfail);
+  }
+  fX.addEventListener('click', function () { if (lreq) tell({ cm: 'llave-cerrada', id: lreq.id }); lreq = null; hide(); });
+  fGo.addEventListener('click', function () { if (fmode === 'activar') enroll(); else if (fmode === 'confirmar') confirmPrf(); else if (fmode === 'desbloquear') unlock();
+    else if (fmode === 'llave-alta') lalta(); else if (fmode === 'llave-confirmar') laltaConfirm(); else if (fmode === 'llave-firmar') lfirmar(true); });
+  fNo.addEventListener('click', function () { if (fmode === 'llave-firmar') { lfirmar(false); return; }
+    if (fmode === 'llave-alta' || fmode === 'llave-confirmar') { tell({ cm: 'llave-alta-ok', ok: false }); lreq = null; }
+    if (fmode === 'activar' || fmode === 'confirmar') tell({ cm: 'faceid-activado', ok: false }); hide(); });
   window.addEventListener('message', function (e) {
     if (!/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin) || !ours(e.source)) return;
-    var m = e.data || {}; if (typeof m.cm !== 'string' || m.cm.indexOf('faceid') !== 0) return;
+    var m = e.data || {}; if (typeof m.cm !== 'string' || (m.cm.indexOf('faceid') !== 0 && m.cm.indexOf('llave') !== 0)) return;
     fsrc = e.source; forg = e.origin;
+    if (m.cm === 'llave-estado?') { lestado(); return; }
+    if (m.cm === 'llave-borrar') { lset(null); lestado(); return; }
+    if (m.cm === 'llave-alta' && /^[0-9a-f]{16}$/.test(m.id || '') && /^[0-9]{2}$/.test(m.codigo || '')) {
+      lreq = { id: m.id, codigo: m.codigo }; fmode = 'llave-alta';
+      sheet('Usar este iPhone como llave', 'Número de control ' + m.codigo + '. Tiene que ser el mismo que ves en CM en tu PC. Desde ahora vas a aprobar con Face ID lo delicado que pida la PC.', 'Vincular con Face ID', 'Cancelar'); return;
+    }
+    if (m.cm === 'llave-firmar' && lget() && /^[0-9a-f]{16}$/.test(m.id || '') && /^[0-9a-f]{24}$/.test(m.nonce || '') && ACC[m.accion] && /^[0-9]{2}$/.test(m.codigo || '')) {
+      if (fmode && fmode !== 'llave-firmar') return;
+      lreq = { id: m.id, nonce: m.nonce, accion: m.accion }; fmode = 'llave-firmar';
+      sheet('Tu PC pide tu aprobación', ACC[m.accion] + ' · número de control ' + m.codigo + '. Aprobá solo si lo pediste vos en CM en tu PC.', 'Aprobar con Face ID', 'Rechazar');
+      document.getElementById('fidX').hidden = false; return;
+    }
+    if (m.cm === 'llave-cancelar') { if (fmode === 'llave-firmar' && lreq && lreq.id === m.id) { lreq = null; hide(); } return; }
     if (m.cm === 'faceid-estado?') estado();
     else if (m.cm === 'faceid-pedir') { if (fget()) { fmode = 'desbloquear'; sheet('Desbloquear CM', 'Mirá tu iPhone para entrar.', 'Usar Face ID', 'Usar el PIN'); } }
     else if (m.cm === 'faceid-activar' && /^[0-9]{4,6}$/.test(m.pin || '')) { fpin = m.pin; fmode = 'activar'; sheet('Activar Face ID', 'Vas a poder entrar a CM mirando el teléfono. El PIN sigue funcionando siempre.', 'Activar Face ID', 'Ahora no'); }
