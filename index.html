@@ -22,7 +22,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CM">
 <meta name="theme-color" content="#060b15">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-5kCOmfSRYZ2fJXOxMxmM67ddvWBRFbub32cC1J9Y2Kc='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-7YQbBthK2HQOwE9HLqiam99H3MhJ7jjba4HdLPiKdDM='; base-uri 'none'; form-action 'none'">
 <link rel="apple-touch-icon" href="icono-180.png">
 <title>CM</title>
 <style>
@@ -163,7 +163,7 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
     fsrc = e.source; forg = e.origin;
     if (m.cm === 'faceid-estado?') estado();
     else if (m.cm === 'faceid-pedir') { if (fget()) { fmode = 'desbloquear'; sheet('Desbloquear CM', 'Mirá tu iPhone para entrar.', 'Usar Face ID', 'Usar el PIN'); } }
-    else if (m.cm === 'faceid-activar' && /^[0-9]{4}$/.test(m.pin || '')) { fpin = m.pin; fmode = 'activar'; sheet('Activar Face ID', 'Vas a poder entrar a CM mirando el teléfono. El PIN sigue funcionando siempre.', 'Activar Face ID', 'Ahora no'); }
+    else if (m.cm === 'faceid-activar' && /^[0-9]{4,6}$/.test(m.pin || '')) { fpin = m.pin; fmode = 'activar'; sheet('Activar Face ID', 'Vas a poder entrar a CM mirando el teléfono. El PIN sigue funcionando siempre.', 'Activar Face ID', 'Ahora no'); }
     else if (m.cm === 'faceid-desactivar' || m.cm === 'faceid-invalido') { fset(null); hide(); estado(); }
     else if (m.cm === 'faceid-cancelar') { if (fmode === 'desbloquear') hide(); }
   });
