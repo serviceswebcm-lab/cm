@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <!--
-  Crypto Monitor · página propia (V267)
+  Crypto Monitor · página propia (V269)
   Esta página NO tiene ningún dato tuyo: ni la dirección de tu Google, ni claves, ni montos.
   Todo lo privado viaja después del "#" de la dirección, que los navegadores nunca le mandan a GitHub,
   y queda guardado solo en tu teléfono. La página únicamente muestra CM (que corre en tu Google) a pantalla completa,
@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CM">
 <meta name="theme-color" content="#060b15">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-qyWc7zKkSkaV52115DX079qmEYZaQet+S6Ix6p/gpUw='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-6jGpw6HO8tLnvPaui6Vp9/Nlt9GOmQLq2QrI1i+Kheg='; base-uri 'none'; form-action 'none'">
 <link rel="apple-touch-icon" href="icono-180.png">
 <title>CM</title>
 <style>
@@ -68,8 +68,9 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
     var inner = '';
     if (u && CODE.test(p.p || '')) { inner = 'p=' + p.p; history.replaceState(null, '', location.pathname + '#u=' + u); }      // código de un solo uso
     else if (u && PAIR.test(p.cm || '')) { inner = 'cm=' + p.cm; history.replaceState(null, '', location.pathname + '#u=' + u); }
-    else if (u && DEV.test(p.d || '')) { inner = 'd=' + p.d; put(u, p.d); }
+    // V269: manda la dirección GUARDADA (la actualiza CM al cambiar el PIN); el ícono de inicio del iPhone trae siempre la vieja.
     else if (u && DEV.test(saved.d || '') && saved.u === u) { inner = 'd=' + saved.d; put(u, saved.d); }
+    else if (u && DEV.test(p.d || '')) { inner = 'd=' + p.d; put(u, p.d); }
     if (!u) { msg.style.display = 'flex'; f.style.display = 'none'; return; }
     // Sin datos de este dispositivo: CM (en tu Google) pide el código de 8 números que muestra la PC.
     if (!inner) { try { localStorage.setItem(KEY, '#u=' + u); } catch (_) {} }
