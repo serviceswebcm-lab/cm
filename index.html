@@ -26,7 +26,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="CM">
 <meta name="theme-color" content="#060b15">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-6jGpw6HO8tLnvPaui6Vp9/Nlt9GOmQLq2QrI1i+Kheg='; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; frame-src https://script.google.com; img-src 'self'; style-src 'unsafe-inline'; script-src 'sha256-240FK/E59zucZF/QPUND76mZBfvy2Vag7EhTHvxanok='; base-uri 'none'; form-action 'none'">
 <link rel="apple-touch-icon" href="icono-180.png">
 <title>CM</title>
 <style>
@@ -171,11 +171,13 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
   // ================= V267 · LLAVE DE LA PC =================
   var LKEY = 'cm_llave_pc_v1', lreq = null, fX = document.getElementById('fidX');
   var ACC = { admin: 'Desbloquear Admin', pin: 'Cambiar el PIN', cuentas: 'Conectar una cuenta (IOL, Mercado Pago, BingX)', operar: 'Habilitar operaciones en IOL',
-    nube: 'Vincular o quitar dispositivos de la nube', restaurar: 'Restaurar o restablecer datos', llave: 'Cambiar la configuración de la llave', vincular: 'Vincular un iPhone como llave' };
+    nube: 'Vincular o quitar dispositivos de la nube', restaurar: 'Restaurar o restablecer datos', llave: 'Cambiar la configuración de la llave', vincular: 'Vincular un iPhone como llave',
+    apis: 'Ver tus API conectadas', fabrica: 'Restablecer CM de fábrica', respaldo: 'Descargar un respaldo' };  // V283: faltaban las acciones de V268
+  function atexto(a, t) { return ACC[a] || String(t || '').replace(/[<>\u0000-\u001f]/g, '').slice(0, 80) || 'Acción protegida'; }
   var LAAD = te.encode('cm-llave-pc-v1');
   function lget() { try { return JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (_) { return null; } }
   function lset(v) { try { if (v) localStorage.setItem(LKEY, JSON.stringify(v)); else localStorage.removeItem(LKEY); } catch (_) {} }
-  function lestado() { avail().then(function (a) { tell({ cm: 'llave-estado', disponible: !!a, activo: !!lget() }); }); }
+  function lestado() { avail().then(function (a) { tell({ cm: 'llave-estado', disponible: !!a, activo: !!lget(), v: 283 }); }); }
   function lfail(e) { fGo.disabled = false; fNo.disabled = false; fM.textContent = nice(e); fM.className = 'err'; }
   function laltaFinish(prf) {
     var key = prf || rnd(32), sec = rnd(32), iv = rnd(12);
@@ -231,11 +233,11 @@ html,body{margin:0;height:100%;background:#060b15;color:#cfe3f5;font:16px -apple
       lreq = { id: m.id, codigo: m.codigo }; fmode = 'llave-alta';
       sheet('Usar este iPhone como llave', 'Número de control ' + m.codigo + '. Tiene que ser el mismo que ves en CM en tu PC. Desde ahora vas a aprobar con Face ID lo delicado que pida la PC.', 'Vincular con Face ID', 'Cancelar'); return;
     }
-    if (m.cm === 'llave-firmar' && lget() && /^[0-9a-f]{16}$/.test(m.id || '') && /^[0-9a-f]{24}$/.test(m.nonce || '') && ACC[m.accion] && /^[0-9]{2}$/.test(m.codigo || '')) {
-      if (fmode && fmode !== 'llave-firmar') return;
+    if (m.cm === 'llave-firmar' && lget() && /^[0-9a-f]{16}$/.test(m.id || '') && /^[0-9a-f]{24}$/.test(m.nonce || '') && /^[a-z]{2,20}$/.test(m.accion || '') && /^[0-9]{2}$/.test(m.codigo || '')) {
+      if (fmode && fmode !== 'llave-firmar') { tell({ cm: 'llave-ocupado', id: m.id }); return; }
       lreq = { id: m.id, nonce: m.nonce, accion: m.accion }; fmode = 'llave-firmar';
-      sheet('Tu PC pide tu aprobación', ACC[m.accion] + ' · número de control ' + m.codigo + '. Aprobá solo si lo pediste vos en CM en tu PC.', 'Aprobar con Face ID', 'Rechazar');
-      document.getElementById('fidX').hidden = false; return;
+      sheet('Tu PC pide tu aprobación', atexto(m.accion, m.texto) + ' · número de control ' + m.codigo + '. Aprobá solo si lo pediste vos en CM en tu PC.', 'Aprobar con Face ID', 'Rechazar');
+      document.getElementById('fidX').hidden = false; tell({ cm: 'llave-mostrado', id: m.id }); return;
     }
     if (m.cm === 'llave-cancelar') { if (fmode === 'llave-firmar' && lreq && lreq.id === m.id) { lreq = null; hide(); } return; }
     if (m.cm === 'faceid-estado?') estado();
